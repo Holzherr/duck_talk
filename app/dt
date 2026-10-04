@@ -25,7 +25,7 @@ cd "$(dirname "$0")"
 
 SCHEME=DuckTalk
 PROJECT=DuckTalk.xcodeproj
-BUNDLE_ID=dev.conception.duck-talk
+BUNDLE_ID=dev.brambruesch.ducktalk
 SIM="${SIM:-iPhone 17 Pro}"
 DERIVED=.build
 

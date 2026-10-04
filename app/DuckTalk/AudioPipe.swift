@@ -191,6 +191,22 @@ final class AudioPipe {
         engine.connect(player, to: engine.mainMixerNode, format: speakerFormat)
 
         let input = engine.inputNode
+        // The session's .videoChat mode does not reach an AVAudioEngine graph on its
+        // own: the engine's echo canceller is voice processing on the input node, which
+        // takes this engine's output as its reference and subtracts the reply from the
+        // mic. Without it, the reply on the speaker comes back as a barge-in in the
+        // user's name. Set before the format is read, because enabling it changes it.
+        if !input.isVoiceProcessingEnabled {
+            do {
+                try input.setVoiceProcessingEnabled(true)
+                if #available(iOS 17.0, *) {
+                    input.voiceProcessingOtherAudioDuckingConfiguration =
+                        .init(enableAdvancedDucking: false, duckingLevel: .min)
+                }
+            } catch {
+                onAudio?("voice processing unavailable: \(error.localizedDescription)")
+            }
+        }
         let hardwareFormat = input.outputFormat(forBus: 0)
         // installTap throws an ObjC exception on a 0 Hz / 0 channel format, which Swift
         // cannot catch — the app would die instead of reporting. Some inputs report

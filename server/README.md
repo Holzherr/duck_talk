@@ -33,7 +33,11 @@ the environment. `--port` and `--cwd` are the flags; `PORT` and `PROJECT_CWD` ar
 same two as environment variables. `STT_MODEL`, `VOICE_MODEL`, `CLAUDE_MODEL`,
 `CLAUDE_PERMISSION_MODE` (default `plan`) and `CLAUDE_EFFORT` override the rest — the
 last three say only where a session starts, since the phone moves any of them on the
-session already running. `TURN_QUIET_MS`
+session already running. `--skill <name>`, or `CLAUDE_SKILL`, is the project skill
+every session starts in (default `on-the-road`): the body of the served folder's
+`.claude/skills/<name>/SKILL.md`, frontmatter off, goes into the system prompt under
+"Start in this mode", after the `claude` prompt. A folder without that skill starts
+without one, and `none` turns it off; the startup line `skill` says which. `TURN_QUIET_MS`
 (default 300000, `0` disables) is how long Claude may produce nothing at all before the
 turn is interrupted and the session recovers. Silence, not length: every word and every
 tool block re-arms it, so a fan-out of subagents can work for as long as it needs to,

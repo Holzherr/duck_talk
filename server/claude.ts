@@ -45,6 +45,8 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { query, type AccountInfo, type EffortLevel, type ModelInfo, type Options, type PermissionMode, type Query, type SDKUserMessage, type SlashCommand } from '@anthropic-ai/claude-agent-sdk';
 import { track } from './live.ts';
@@ -240,6 +242,42 @@ function skills(commands: SlashCommand[]): SlashCommand[] {
     .map((c) => ({ ...c, description: c.description.replace(source, '') }));
 }
 
+/**
+ * The skill every session starts in, so a mode the project keeps as a skill does not
+ * have to be asked for at the top of every conversation. Its body goes into the
+ * system prompt, under the Claude prompt — not into that prompt's file, because an
+ * edit made from the phone is read in preference to the shipped one and would hide it.
+ *
+ * `CLAUDE_SKILL` names it (cli.ts sets it from `--skill`), `none` turns it off, and
+ * read per call so a test can move it. A folder without that skill adds nothing.
+ */
+function skillName(): string {
+  return process.env['CLAUDE_SKILL']?.trim() || 'on-the-road';
+}
+
+/** The skill's SKILL.md with its frontmatter off, or null when there is none to load. */
+function skillBody(folder: string, name: string): string | null {
+  if (name === 'none') return null;
+  try {
+    const text = readFileSync(join(folder, '.claude', 'skills', name, 'SKILL.md'), 'utf8');
+    return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim() || null;
+  } catch {
+    return null; // this folder has no such skill, which is normal
+  }
+}
+
+/** What `openClaude` appends to Claude Code's own prompt: the Claude prompt, then the skill. */
+export function systemAppend(folder: string = CWD, name: string = skillName()): string {
+  const body = skillBody(folder, name);
+  return [read('claude'), body && `# Start in this mode\n\n${body}`].filter(Boolean).join('\n\n');
+}
+
+/** Which skill sessions start in, as the one line the relay prints at startup. */
+export function skillLine(folder: string = CWD, name: string = skillName()): string {
+  if (name === 'none') return 'none — sessions start without a skill';
+  return skillBody(folder, name) ? name : `${name}: not found in ${folder}`;
+}
+
 /** That answer as the one line the relay prints at startup. */
 export async function billingMode(): Promise<string> {
   const { account } = await capabilities();
@@ -377,8 +415,9 @@ function openClaude(cb: ClaudeCallbacks, resume?: string): Claude {
     //
     // Read here rather than at module load, so an edit made from the phone reaches
     // the next session. It cannot reach this one: the SDK takes the prompt when the
-    // query is built, and rebuilding per turn would throw the warm session away.
-    systemPrompt: { type: 'preset', preset: 'claude_code', append: read('claude') },
+    // query is built, and rebuilding per turn would throw the warm session away. The
+    // skill sessions start in rides after it — see `systemAppend`.
+    systemPrompt: { type: 'preset', preset: 'claude_code', append: systemAppend() },
     includePartialMessages: true,
     permissionMode: PERMISSION_MODE,
     // What the session may become, not what it is. `setPermissionMode` refuses to reach

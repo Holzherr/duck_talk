@@ -47,8 +47,9 @@ You will need:
 
 The command the package installs is `duck-talk`, and `duck-talk --help` has the rest:
 `--cwd` serves a folder you are not standing in, `--port` defaults to 8765, `--awake`
-(or `KEEP_AWAKE=1` in `.env`) keeps the Mac from idle sleep while it runs. Node 22 or
-newer.
+(or `KEEP_AWAKE=1` in `.env`) keeps the Mac from idle sleep while it runs, and every
+session starts in the folder's `on-the-road` skill when it has one — `--skill <name>`
+(or `CLAUDE_SKILL`) picks another, `none` turns it off. Node 22 or newer.
 
 ### Your iPhone
 

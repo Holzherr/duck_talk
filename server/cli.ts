@@ -42,7 +42,7 @@ const { VERSION } = await import('./paths.ts');
 if (argv.includes('--help') || argv.includes('-h')) {
   console.log(`duck-talk ${VERSION} — talk to Claude Code from your phone
 
-  duck-talk [--port <n>] [--cwd <path>]
+  duck-talk [--port <n>] [--cwd <path>] [--awake] [--skill <name>]
 
   --port <n>    which port to listen on (default 8765). Fixed on purpose: a
                 Tailscale front door opens onto one port, and moving would leave
@@ -50,6 +50,9 @@ if (argv.includes('--help') || argv.includes('-h')) {
   --cwd <path>  the project Claude works in (default: this folder)
   --awake       keep this Mac from idle sleep while the relay runs (KEEP_AWAKE=1).
                 Idle sleep only: a closed lid still sleeps the Mac.
+  --skill <name>  the project skill every session starts in (CLAUDE_SKILL,
+                default on-the-road), read from .claude/skills/<name>/SKILL.md;
+                none turns it off. A folder without it starts without one.
   --version     print the version and exit
 
 Needs GEMINI_API_KEY in the environment or in a .env file in this folder, and
@@ -98,6 +101,8 @@ if (process.env['ANTHROPIC_API_KEY']?.trim()) {
 
 const port = flag('port');
 if (port) process.env['PORT'] = port;
+const skill = flag('skill');
+if (skill) process.env['CLAUDE_SKILL'] = skill;
 
 // A phone reaching a Mac that has gone to sleep reads "Offline", with nothing to say
 // why — so the relay can hold the Mac awake for as long as it serves. Off unless asked:
@@ -120,4 +125,5 @@ console.log(`duck-talk ${VERSION}\n  project      ${project}\n  log          ${l
 if (process.platform === 'darwin') {
   console.log(`  awake        ${awake ? 'keeping this Mac from idle sleep' : 'no — pass --awake, or set KEEP_AWAKE=1, to keep this Mac from sleeping'}`);
 }
+console.log(`  skill        ${(await import('./claude.ts')).skillLine()}`);
 await import('./server.ts');

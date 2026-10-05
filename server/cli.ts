@@ -18,6 +18,7 @@
  *   duck-talk                       serve this folder on :8765
  *   duck-talk --port 9000 --cwd ~/work/api
  *   duck-talk --awake               and keep this Mac from idle sleep meanwhile
+ *   duck-talk review --day 2026-10-04   what went wrong in that day's turns
  */
 
 import { spawn } from 'node:child_process';
@@ -58,6 +59,11 @@ if (argv.includes('--help') || argv.includes('-h')) {
                 none turns it off. A folder without it starts without one.
   --version     print the version and exit
 
+  duck-talk review [--day YYYY-MM-DD] [--cwd <path>]
+
+  what went wrong in one day of this folder's turns (default yesterday): a
+  markdown digest of interrupted, corrected, failed, slow and long turns.
+
 Every socket needs the relay's token: DUCK_TALK_TOKEN, or the one minted into
 .duck-talk/token on first start. Enter it in the app under Settings ▸ Server.
 
@@ -71,6 +77,10 @@ if (argv.includes('--version') || argv.includes('-v')) {
   console.log(VERSION);
   process.exit(0);
 }
+
+// `review` reads what earlier runs left in this folder and starts nothing, so it is
+// answered before the key is asked for and before this run opens a log of its own.
+if (argv[0] === 'review') process.exit((await import('./review.ts')).main(flag('day')));
 
 // A key belongs to the project you are in, so the .env that counts is the one in the
 // folder you started from. Loaded before anything reads it, and never over a variable

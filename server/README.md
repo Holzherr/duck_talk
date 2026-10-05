@@ -187,6 +187,36 @@ turn one, then resumed and fast. `voice_out_at → reply_in_at` is the cost of t
 the reply, which is why measuring a turn needs no working output device — and why it
 looks for it in the repo root, where the relay serving this repo puts it.
 
+## Review a day of turns
+
+```bash
+duck-talk review --day 2026-10-04 --cwd ~/code/api     # or from here: node server/cli.ts review …
+```
+
+`review.ts` reads one local calendar day (default yesterday) of `turns.jsonl`, the
+corrections and the run logs, and prints a markdown digest: how many turns, how many
+went wrong, what they cost, then one count per kind below with the first turn of that
+kind quoted, and the five slowest waits. A day with no turns prints `no turns on <day>`.
+Both exit 0. It starts nothing and needs no key; what it quotes stays in the terminal.
+Why these seven and who acts on them is [specs/turn-review.md](../specs/turn-review.md).
+
+| count | a turn that… | read from |
+|---|---|---|
+| interrupted | was cancelled by you: spoken over, "stop", the stop button, typed over | run log `cancel (…)` |
+| corrected | had a correction saved from its clip | `corrections.jsonl`, same `clip` |
+| error | ended on an error frame: Claude's result was an error, or the ears failed | run log `cancel (claude error: …)`, `ears failed/error` |
+| tool timeout | went silent until the `TURN_QUIET_MS` watchdog cancelled it | run log `cancel (nothing from claude for …)` |
+| slow first audio | waited over 10 s from `heard_at` (review mode: `ran_at`) to `voice_out_at` | turn record |
+| long reply | had more than 60 words in `said` read aloud | turn record |
+| retracted | was taken back because you were still speaking | run log `retract (…)` |
+
+The four log counts need the run log, which lasts a week: a log's `[id]` lines are
+read per connection, and `turn N end` belongs to the record with that `turn` and that
+connection's last `heard:`/`typed:` words. The digest says how many of the day's turns
+it found in a log; one it did not find counts zero for those four.
+
+`node --test server/fixtures/review/review.test.ts` checks it against `fixtures/review/`.
+
 ## Run a primitive alone
 
 From the repo root, not from here: the folder you run one in is the folder it works

@@ -22,7 +22,20 @@ import SwiftUI
 /// Everything that configures the thing rather than being the conversation lives
 /// behind the gear.
 struct ContentView: View {
-    @AppStorage("serverURL") private var serverURL = "ws://localhost:8765"
+    /// Every address the relay answers at, tried in order — home Wi-Fi first, then the
+    /// tailnet. Stored under the key one address used to be, so an address saved before
+    /// there was a list is a list of one.
+    @AppStorage("serverURL") private var saved = "ws://localhost:8765"
+    /// The saved address that answered when last asked, and, while none did, why.
+    @State private var answered: String?
+    @State private var offline: String?
+    @Environment(\.scenePhase) private var scenePhase
+    /// The one address every connection on this screen and the sheets it opens uses:
+    /// the one that answered, or the first saved until one has.
+    private var serverURL: String {
+        let addresses = Relay.addresses(saved)
+        return answered.flatMap { addresses.contains($0) ? $0 : nil } ?? addresses.first ?? ""
+    }
     /// The choices, each stored as the string the relay speaks in and read back as
     /// its own type below. The phone decides them and the relay obeys — but `mode`
     /// travels in the URL and the rest as a message, because the relay can put
@@ -130,7 +143,7 @@ struct ContentView: View {
                 switch which {
                 case .prompts: PromptsView(serverURL: serverURL)
                 case .corrections(let seed): CorrectionsView(serverURL: serverURL, seed: seed)
-                case .server: ServerView(serverURL: $serverURL, relay: relay)
+                case .server: ServerView(saved: $saved, address: serverURL, offline: offline, relay: relay)
                 case .mode: ChoiceSheet(title: "Mode", choices: Mode.choices, picked: $modeName)
                 // What you add to the turn besides words — a picture, and what Claude
                 // may do with it. Permission lives here rather than in the bar: you
@@ -201,6 +214,17 @@ struct ContentView: View {
         // reads to know whether the relay is reachable at all. Keyed on the address, so
         // correcting a wrong one re-aims it with nothing else to press.
         .task(id: serverURL) { relay.connect(to: serverURL) }
+        // Which saved address that is, asked again whenever the answer can have changed:
+        // the list edited, the network changed — Wi-Fi left, Tailscale switched on — or
+        // the app back in front. Nobody retypes an address on the way out of the door.
+        .task(id: "\(saved)|\(scenePhase == .active)") {
+            guard scenePhase == .active else { return }
+            for await _ in Relay.pathChanges {
+                let addresses = Relay.addresses(saved)
+                answered = await Relay.resolve(addresses)
+                offline = answered == nil ? Relay.offline(addresses) : nil
+            }
+        }
     }
 
     /// What the app is. Full bleed, and the only thing under the chrome.
@@ -219,6 +243,17 @@ struct ContentView: View {
     private var chrome: some View {
         VStack(spacing: 8) {
             header
+            // Under the Offline pill, why: one sentence, so a phone with Tailscale off
+            // does not look like a relay that is down.
+            if !relay.connected, let offline {
+                Text(offline)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 280)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .accessibilityIdentifier("offline-why")
+            }
             Spacer(minLength: 0)
             if let error = session.error {
                 Text(error)
@@ -1004,12 +1039,17 @@ private struct ComposerHeight: PreferenceKey {
 /// lines: it is the one process that knows every way it can be reached.
 ///
 /// Checked by the connection the home screen already holds, rather than by a socket of
-/// this sheet's own. `serverURL` is bound straight to the field, so every keystroke
-/// re-aims that connection — which is the whole of reconnecting — and `connected` is
-/// already "a relay answered", the same fact the gear's Offline pill draws. A second
-/// dialler here was a second answer to one question, and the two could disagree.
+/// this sheet's own. The list is bound straight to the field, so every keystroke asks
+/// again which address answers and re-aims that connection — which is the whole of
+/// reconnecting — and `connected` is already "a relay answered", the same fact the
+/// gear's Offline pill draws. A second dialler here was a second answer to one
+/// question, and the two could disagree.
 struct ServerView: View {
-    @Binding var serverURL: String
+    /// One address per line, tried in order.
+    @Binding var saved: String
+    /// The one in use, and why none answered when none did.
+    let address: String
+    let offline: String?
     let relay: RelayStore
     @Environment(\.dismiss) private var dismiss
 
@@ -1017,11 +1057,12 @@ struct ServerView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("ws://host:8765", text: $serverURL)
+                    TextField("ws://host:8765", text: $saved, axis: .vertical)
+                        .lineLimit(2...6)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
-                        .accessibilityLabel("Server URL")
+                        .accessibilityLabel("Server addresses")
                     Label(reach.text, systemImage: reach.symbol)
                         .font(.footnote)
                         .foregroundStyle(reach.color)
@@ -1039,7 +1080,7 @@ struct ServerView: View {
                         }
                     }
                 } footer: {
-                    Text("Copy one of the addresses the relay prints when it starts: `localhost` for the simulator, your Mac\u{2019}s Wi-Fi address for a phone on the same network, or its `wss://\u{2026}ts.net` name to reach it from anywhere, cellular included.")
+                    Text("One address per line, tried in order until one answers \u{2014} copy them from the lines the relay prints when it starts: your Mac\u{2019}s Wi-Fi address first for a phone at home, then its `wss://\u{2026}ts.net` name to reach it from anywhere, cellular included. `localhost` is the simulator\u{2019}s.")
                 }
                 Section("Audio route") {
                     Text(AudioPipe.route)
@@ -1061,8 +1102,8 @@ struct ServerView: View {
     /// not, or it is still trying. Nothing here dials anything — every keystroke has
     /// already re-aimed the connection the home screen holds.
     private var reach: (text: String, symbol: String, color: Color) {
-        if relay.connected { return ("Reachable", "checkmark.circle.fill", .green) }
-        if let why = relay.error { return (why, "xmark.circle.fill", .red) }
+        if relay.connected { return ("Reachable at \(address)", "checkmark.circle.fill", .green) }
+        if let why = offline ?? relay.error { return (why, "xmark.circle.fill", .red) }
         return ("Checking\u{2026}", "circle.dotted", Brand.secondaryText)
     }
 }

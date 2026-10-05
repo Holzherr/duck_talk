@@ -67,9 +67,13 @@ for each place a phone can be:
   anywhere     wss://your-mac.your-tailnet.ts.net
 ```
 
-Copy the one that fits under gear ▸ Server in the app. The field checks the address
-as you type and says **Reachable** or what went wrong, so a wrong one fails right
-there, not a screen later.
+Paste them under gear ▸ Server in the app, one per line — same Wi-Fi first, then
+anywhere. The app tries them in order and uses the first that answers within two
+seconds, and asks again whenever the network changes or the app comes back to the
+front, so leaving home or getting back needs no edit. The field says **Reachable at**
+the address in use, or what went wrong. When none answers, the Offline pill says why
+in one sentence — with a tailnet address in the list, that Tailscale may be off on
+the phone.
 
 **Same Wi-Fi** needs nothing. The Mac's own Wi-Fi address, plain `ws://` — iOS
 allows cleartext to a private address, and to nothing else.

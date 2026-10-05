@@ -265,6 +265,40 @@ function audio(chunk: GenerateContentResponse): Buffer | null {
   return data ? Buffer.from(data, 'base64') : null;
 }
 
+// --- Acknowledgement --------------------------------------------------------
+
+/** Said the moment a spoken turn starts running. `ACK=0` turns it off. */
+const ACK = process.env['ACK'] ?? 'Mm-hm.';
+let ack: Promise<Buffer | null> | null = null;
+
+/**
+ * The acknowledgement's audio, synthesized once per relay and kept, so a turn plays it
+ * with no request in the way. Read plain: two syllables have no style to read in. Null
+ * when off; a failed request is forgotten so the next connection asks again.
+ */
+export function acknowledgement(ai: GoogleGenAI, model: string, log: (m: string) => void): Promise<Buffer | null> {
+  if (ACK === '0') return Promise.resolve(null);
+  ack ??= (async () => {
+    const stream = await ai.models.generateContentStream({
+      model,
+      contents: ACK,
+      config: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE_NAME } } } },
+    });
+    const pcm: Buffer[] = [];
+    for await (const chunk of stream) {
+      const part = audio(chunk);
+      if (part) pcm.push(part);
+    }
+    if (!pcm.length) throw new Error('response carried no audio');
+    return Buffer.concat(pcm);
+  })().catch((e) => {
+    log(`acknowledgement failed, turns start silent: ${e}`);
+    ack = null;
+    return null;
+  });
+  return ack;
+}
+
 // --- Sentence buffer --------------------------------------------------------
 
 /**

@@ -1,1 +1,1 @@
-- 2026-10-05 Nick: Yes. You write the spec, not me — the requirements are in AT-039 and the on-the-road skill. Review the turns nightly and ship the fixes; reversible skill edits merge without asking me.
+- 2026-10-05 the owner: Yes. You write the spec, not me — the requirements are in AT-039 and the on-the-road skill. Review the turns nightly and ship the fixes; reversible skill edits merge without asking me.

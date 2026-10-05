@@ -2,7 +2,7 @@ Status: agreed
 
 # Turn review: what went wrong in yesterday's voice turns, and who fixes it
 
-Nick, 2026-10-05: "Yes. You write the spec, not me — the requirements are in AT-039
+The owner, 2026-10-05: "Yes. You write the spec, not me — the requirements are in AT-039
 and the on-the-road skill. Review the turns nightly and ship the fixes; reversible
 skill edits merge without asking me."
 
@@ -53,9 +53,9 @@ and files one backlog item per pattern it finds, through the normal backlog. Not
 changes the app or the relay unattended.
 
 - A reversible edit to the on-the-road skill (`.claude/skills/on-the-road/SKILL.md`)
-  merges after review without asking Nick.
+  merges after review without asking the owner.
 - Anything else — relay code, prompts, the iPhone app — goes through review, and
-  product changes reach Nick as usual.
+  product changes reach the owner as usual.
 
 ## 4. Privacy
 

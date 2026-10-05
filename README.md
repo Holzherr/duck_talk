@@ -51,6 +51,13 @@ The command the package installs is `duck-talk`, and `duck-talk --help` has the 
 session starts in the folder's `on-the-road` skill when it has one — `--skill <name>`
 (or `CLAUDE_SKILL`) picks another, `none` turns it off. Node 22 or newer.
 
+`duck-talk review [--day YYYY-MM-DD]` reads a day of those turn records back (yesterday
+by default) and prints what went wrong: interrupted, corrected, failed, timed-out, slow,
+long-winded and retracted turns, with one quoted example each and the slowest waits.
+It starts nothing, needs no key, and prints only to this Mac — see
+[server/README.md](server/README.md#review-a-day-of-turns) and
+[specs/turn-review.md](specs/turn-review.md).
+
 ### Your iPhone
 
 The relay is a plain WebSocket server, so the client is separable from it. The one in

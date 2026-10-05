@@ -44,6 +44,12 @@ tool block re-arms it, so a fan-out of subagents can work for as long as it need
 and what has to fit inside it is one tool running — a build or a test suite says
 nothing from the moment it starts to the moment it finishes.
 
+The **acknowledgement**: the moment a spoken instruction goes to Claude, the relay plays
+"Mm-hm." on the reply's audio frames, synthesized once when the first phone connects.
+Skipped for a barge-in, a retracted turn re-running, and a typed-only connection. `ACK=0`
+turns it off; any other `ACK` value is the words said instead. It is not the reply: `tts`
+on the turn line and `voice_out_at` in `turns.jsonl` still time Claude's first word.
+
 No build step in the repo: Node ≥ 22.6 runs the `.ts`. `npm run build` exists for the
 published package, which cannot assume that of a stranger's Node.
 

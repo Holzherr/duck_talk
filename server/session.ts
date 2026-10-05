@@ -44,7 +44,7 @@ import { add, load, type Correction } from './corrections.ts';
 import { openEars, keyword, type Ears, type Keyword } from './ears.ts';
 import { save as saveImage } from './images.ts';
 import { append, type Mode, type Turn } from './turns.ts';
-import { openVoice, type Voice } from './voice.ts';
+import { acknowledgement, openVoice, type Voice } from './voice.ts';
 
 export type { Mode, Turn };
 
@@ -117,6 +117,11 @@ export class Session {
 
   private corrections: Correction[] = [];
 
+  // See `acknowledge`: its audio, whether this turn has had (or forfeited) it, its length.
+  private ack: Buffer | null = null;
+  private acked = false;
+  private ackMs = 0;
+
   // What this turn was given — pictures and pasted texts — held from the moment they
   // are picked until the turn they belong to is over. Not a field on the frame that
   // starts the turn, because there is no such frame when you speak: the instruction is
@@ -174,6 +179,7 @@ export class Session {
     // next auto-correct without re-reading the file.
     this.corrections = load();
     if (this.corrections.length) this.log(`${this.corrections.length} corrections learned`);
+    void acknowledgement(this.ai, this.voiceModel, this.log).then((pcm) => { this.ack = pcm; });
 
     // The voice needs no connection, so there is nothing to await and nothing that
     // can fail here.
@@ -319,7 +325,7 @@ export class Session {
           // The reason given is the signal that caused it — the ears' own JOIN
           // decision — rather than what the speaker is presumed to be doing.
           if (continuing) this.retract();
-          else this.cancel('partial while claude, not continuing');
+          else { this.cancel('partial while claude, not continuing'); this.acked = true; } // the cut reply was the answer to "did it hear me"
         }
         this.turn.heard = text;
         // The first partial is when words first reached the screen, the last one is
@@ -438,11 +444,13 @@ export class Session {
     // has nothing of this session's to report, and nothing is listening for it.
     else if (msg.type === 'played' && typeof msg.ms === 'number') {
       if (this.state === 'user') return;
+      // The phone counts the acknowledgement as reply; the voice never sent it.
+      const ms = Math.max(0, msg.ms - this.ackMs);
       // Beside what was sent, so the two halves of the subtraction sit on one line
       // when a reply stops early — the phone's own number, not arithmetic over it.
-      this.log(`phone: played ${(msg.ms / 1000).toFixed(1)}s of ${(this.turn.voice_ms / 1000).toFixed(1)}s sent`);
-      this.turn.heard_ms = msg.ms;
-      this.voice.heard(msg.ms);
+      this.log(`phone: played ${(ms / 1000).toFixed(1)}s of ${(this.turn.voice_ms / 1000).toFixed(1)}s sent`);
+      this.turn.heard_ms = ms;
+      this.voice.heard(ms);
     }
     else if (msg.type === 'text' && typeof msg.text === 'string') this.typed(msg.text);
     // A picture picked, or a text pasted. Says nothing about when the turn runs — see `attached`.
@@ -497,7 +505,9 @@ export class Session {
     // "yes" / "no" / "stop" answer a question rather than asking one. A bare word
     // only — "yes, delete it" is a real instruction and falls through.
     const control = bareKeyword(said);
-    if (control) return this.onKeyword(control);
+    // A bare "stop" said over the reply runs nothing, so the next instruction is a turn
+    // of its own and is acknowledged.
+    if (control) { this.acked = false; return this.onKeyword(control); }
     // Mid-hold, the keywords decide; anything else said is noise.
     if (this.state === 'held') return;
     // Speaking over Claude already cancelled the turn on the first partial; this is
@@ -571,7 +581,8 @@ export class Session {
   private typed(said: string): void {
     const instruction = said.trim();
     if (!instruction || this.state === 'held') return;
-    const ended = this.state === 'claude' ? this.cancel('typed over the reply') : Promise.resolve();
+    let ended = Promise.resolve();
+    if (this.state === 'claude') { ended = this.cancel('typed over the reply'); this.acked = true; }
     void ended.then(() => {
       if (this.state !== 'user' || this.closed) return; // a spoken turn took the floor meanwhile
       this.turn.proposed = instruction;
@@ -666,12 +677,28 @@ export class Session {
     // Carries the chat, so a socket opened mid-turn — a microphone tapped while a
     // typed turn runs — resumes this chat rather than starting one beside it.
     this.phone.event({ type: 'turn_start', session: this.sessionId });
+    this.acknowledge();
     this.arm();
     // Recorded rather than consumed: what was attached belongs to the turn, and a
     // retract re-runs this same turn with it still in hand. `endTurn` is what lets go.
     // Only pictures are recorded by id — a paste has no file to be found under one.
     this.turn.images = this.attached.flatMap((a) => ('data' in a ? [a.id] : []));
     this.claude.send(instruction, this.attached.map((a) => ('data' in a ? { image: a.data } : { paste: a.text }))); // the callbacks wired in open() carry the reply
+  }
+
+  /**
+   * Say "Mm-hm" the moment the instruction is sent: the reply's first word is seconds
+   * away, and on a walk silence reads as a dropped call. Straight to the phone, not
+   * through the voice, so `voice_out_at` still times the reply. After `turn_start`,
+   * where the phone starts counting what it plays. Once per turn, never for a barge-in
+   * (the cut reply already said "I heard you"), and only to someone who spoke.
+   */
+  private acknowledge(): void {
+    this.ackMs = 0; // turn_start just zeroed the phone's count
+    if (this.acked || !this.ears || !this.ack) return;
+    this.acked = true;
+    this.ackMs = this.ack.length / 48;
+    this.phone.pcm(this.ack);
   }
 
   // --- Watchdog: the turn is alive, or nothing is arriving --------------------
@@ -733,6 +760,7 @@ export class Session {
     const t = this.turn;
     this.turn = this.blank();
     this.attached = []; // what was attached was this turn's, and the turn is over
+    this.acked = false;
     this.state = 'user';
     // Which chat this turned out to be, so the next connection the phone opens can
     // carry it on — and where the turn's two messages now sit in the store, so a line

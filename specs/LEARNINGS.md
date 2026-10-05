@@ -1,0 +1,1 @@
+- 2026-10-05 builder: turns.jsonl records no cancel, error or retract and no connection id; those live only in the week-long run logs, matched to a record by turn number plus heard text, and `.duck-talk/` is gitignored so fixtures under it need `git add -f`.

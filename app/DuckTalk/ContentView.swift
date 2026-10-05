@@ -740,15 +740,7 @@ struct ContentView: View {
                 .scaledToFit()
                 .frame(width: 76)
                 .accessibilityHidden(true)
-            VStack(spacing: 2) {
-                Text("Duck Talk").font(.title3.weight(.medium))
-                Link(destination: URL(string: "https://reduck.ai")!) {
-                    Text("by ").foregroundStyle(Brand.tertiaryText)
-                        + Text("Reduck").foregroundStyle(Brand.accent)
-                }
-                .font(.subheadline)
-                .accessibilityLabel("Reduck")
-            }
+            Text("Duck Talk").font(.title3.weight(.medium))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

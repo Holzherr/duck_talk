@@ -43,10 +43,12 @@ struct ListenButton: View {
     var start: () -> Void
 
     private let bars = 7
-    private let barWidth: CGFloat = 3
-    private let spacing: CGFloat = 3
-    private let quiet: CGFloat = 3    // height of a bar with nothing to show
-    private let loud: CGFloat = 26    // height of the middle bar at full level
+    private let barWidth: CGFloat = 4
+    private let spacing: CGFloat = 4
+    private let quiet: CGFloat = 4    // height of a bar with nothing to show
+    private let loud: CGFloat = 44    // height of the middle bar at full level
+    /// Bigger than the bar's other controls: it is the one you reach for without looking.
+    private let size: CGFloat = 72
 
     var body: some View {
         Button(action: { if !live { start() } }) {
@@ -59,15 +61,18 @@ struct ListenButton: View {
                     }
                 }
                 .animation(.easeOut(duration: 0.1), value: level)
-                .slot(.bare) // your voice, not a button — it needs nothing behind it
+                // your voice, not a button — it needs nothing behind it
+                .frame(width: size, height: size).contentShape(Circle())
             } else {
                 // A waveform with nothing to show is a row of dots that says nothing.
                 // Silent, the control names what it does instead — and it is the one
                 // thing lit on the screen, which is the whole of "tap to talk".
                 Image(systemName: "mic.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(Brand.background)
-                    .slot(.accent)
+                    .frame(width: size, height: size)
+                    .background(Circle().fill(Brand.accent))
+                    .contentShape(Circle())
             }
         }
         .buttonStyle(.plain)

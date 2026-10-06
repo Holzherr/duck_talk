@@ -34,7 +34,18 @@ enum Relay {
     /// commas and spaces split too, since no address contains one. A single address
     /// saved before there was a list is a list of one.
     static func addresses(_ saved: String) -> [String] {
-        saved.split(whereSeparator: { $0.isNewline || $0 == "," || $0 == " " }).map(String.init)
+        var seen = Set<String>()
+        return (split(saved) + built).filter { seen.insert($0).inserted }
+    }
+
+    /// The addresses this build was made with, from app/.relays, tried after the saved
+    /// ones — so a fresh install, or one whose saved address is only good at home,
+    /// still finds the relay with nothing typed.
+    static let built = split(Bundle.main.object(forInfoDictionaryKey: "DuckTalkRelays") as? String ?? "")
+
+    private static func split(_ text: String) -> [String] {
+        text.split(whereSeparator: { $0.isNewline || $0 == "," || $0 == " " }).map(String.init)
+            .filter { url($0) != nil }
     }
 
     /// The first address that answers within two seconds, or nil when none does.
@@ -43,8 +54,16 @@ enum Relay {
     /// depends on where the phone is — so the phone tries them in order rather than
     /// asking anyone to retype the address on the way out of the door.
     static func resolve(_ addresses: [String]) async -> String? {
-        for address in addresses where await answers(address) { return address }
-        return nil
+        // All at once, first answer wins: off home Wi-Fi the LAN address only ever
+        // times out, and nobody should wait those two seconds before the tailnet one.
+        await withTaskGroup(of: String?.self) { group in
+            for address in addresses { group.addTask { await answers(address) ? address : nil } }
+            for await answer in group where answer != nil {
+                group.cancelAll()
+                return answer
+            }
+            return nil
+        }
     }
 
     /// A pong means the handshake finished: a relay is there. The timeout is ours,

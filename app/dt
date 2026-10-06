@@ -128,6 +128,12 @@ run() {
 # The simulator path above signs nothing and installs with simctl; a device needs
 # a signed build and devicectl. Same derived data, a different Products folder.
 
+# The relay's addresses built into the app, one per line in app/.relays (gitignored):
+# home Wi-Fi first, then the tailnet name. Empty is fine; the app falls back to Settings.
+relays() {
+  [ -f .relays ] && grep -v '^#' .relays | paste -sd, - || true
+}
+
 team() {
   local team="${DEVELOPMENT_TEAM:-}"
   [ -n "$team" ] || [ ! -f .team ] || team=$(tr -d '[:space:]' < .team)
@@ -178,6 +184,7 @@ phone() {
     -derivedDataPath "$DERIVED" \
     -allowProvisioningUpdates -allowProvisioningDeviceRegistration $auth \
     DEVELOPMENT_TEAM="$team" \
+    DUCK_TALK_RELAYS="$(relays)" \
     -quiet build 2>&1 | filter
   xcrun devicectl device install app --device "$udid" \
     "$DERIVED/Build/Products/Debug-iphoneos/$SCHEME.app"
@@ -231,6 +238,7 @@ ship() {
     -derivedDataPath "$DERIVED" \
     -archivePath "$archive" \
     CODE_SIGNING_ALLOWED=NO \
+    DUCK_TALK_RELAYS="$(relays)" \
     -quiet archive 2>&1 | filter
   # The team rides in from .team rather than being written into the plist twice; an
   # unsigned archive carries none of its own, and export refuses without one.

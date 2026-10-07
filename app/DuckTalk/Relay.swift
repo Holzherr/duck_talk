@@ -91,7 +91,7 @@ enum Relay {
     static func offline(_ addresses: [String]) -> String {
         let tailnet = addresses.contains { url($0)?.host?.hasSuffix(".ts.net") == true }
         return tailnet && addresses.count > 1
-            ? "Not on home Wi-Fi and the tailnet address does not answer \u{2014} is Tailscale on on this phone?"
+            ? "Turn on Tailscale on this phone to reach your Mac."
             : "No relay answered at any saved address."
     }
 

@@ -247,10 +247,13 @@ struct ContentView: View {
             // does not look like a relay that is down.
             if !relay.connected, let offline {
                 Text(offline)
-                    .font(.footnote)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 280)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                    .frame(maxWidth: 300)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .accessibilityIdentifier("offline-why")
             }

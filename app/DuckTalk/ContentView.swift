@@ -766,16 +766,16 @@ struct ContentView: View {
     ///
     /// No instructions: the microphone is the only thing lit on the screen and the field
     /// says "Message", which is the whole of "tap to talk, or type" without a sentence
-    /// asking to be read. The one link in the app is here, because who made this is
-    /// worth a tap exactly when there is nothing else to do.
+    /// asking to be read. The duck fills the screen so the app opens on it.
     private var blank: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 20) {
             Image("Logo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 76)
+                .frame(maxWidth: 320, maxHeight: 320)
+                .padding(.horizontal, 32)
                 .accessibilityHidden(true)
-            Text("Duck Talk").font(.title3.weight(.medium))
+            Text("Duck Talk").font(.title2.weight(.semibold))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -20,6 +20,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: node --test server/fixtures/auth.test.ts
       - run: npm run build
       - run: ./scripts/install-elsewhere.sh
 

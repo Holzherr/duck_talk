@@ -184,7 +184,7 @@ final class VoiceSession {
     private func hold() async {
         var backoff: Duration = .milliseconds(250)
         while !Task.isCancelled, wantSocket, let base = url {
-            let task = URLSession.shared.webSocketTask(with: resumed(base))
+            let task = URLSession.shared.webSocketTask(with: Relay.request(resumed(base)))
             socket = task
             task.resume()
             sendClaude()      // what Claude should be, before anything is said on it

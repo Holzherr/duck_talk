@@ -75,8 +75,15 @@ the address in use, or what went wrong. When none answers, the Offline pill says
 in one sentence — with a tailnet address in the list, that Tailscale may be off on
 the phone.
 
-**Same Wi-Fi** needs nothing. The Mac's own Wi-Fi address, plain `ws://` — iOS
-allows cleartext to a private address, and to nothing else.
+**The token.** A socket on the relay is a shell on your Mac, so every one needs the
+relay's token: `DUCK_TALK_TOKEN`, or the one minted into `.duck-talk/token` on first
+start. Paste it under gear ▸ Server ▸ Relay token. A browser page is refused even
+with it.
+
+**Same Wi-Fi** is off by default: the relay listens on 127.0.0.1, which is all the
+simulator and Tailscale need. `--host 0.0.0.0` opens it — the Mac's own Wi-Fi address,
+plain `ws://`, so the token crosses your Wi-Fi in clear. iOS allows cleartext to a
+private address, and to nothing else.
 
 **Anywhere** — cellular, another network, a café — needs a tunnel, because your Mac is
 behind your router with no public address of its own. Two things are not enough on

@@ -80,8 +80,14 @@ import { watch, working } from './live.ts';
 import { VERSION } from './paths.ts';
 import { all as prompts, isName, write as writePrompt } from './prompts.ts';
 import { reach } from './reach.ts';
+import { refusal, token } from './auth.ts';
 
 const PORT = Number(process.env['PORT'] ?? 8765);
+// Loopback unless told otherwise: `tailscale serve` and the simulator both arrive on
+// 127.0.0.1, and every other interface is a network this Mac happens to be on. HOST=0.0.0.0
+// (--host) opens the same-Wi-Fi door, which is plain ws:// and carries the token in clear.
+const HOST = process.env['HOST'] || '127.0.0.1';
+const TOKEN = token();
 // Two jobs, two models: one Live session transcribes what you say, and a
 // text-to-speech model reads Claude's answer back a sentence at a time. Only the
 // first is a session — see voice.ts for why the reader is better off without one.
@@ -94,7 +100,16 @@ if (!API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
-const wss = new WebSocketServer({ port: PORT });
+const wss = new WebSocketServer({
+  host: HOST,
+  port: PORT,
+  // Refused at the upgrade, so an unauthenticated client never gets a socket — see auth.ts.
+  verifyClient: ({ req }, done) => {
+    const status = refusal(req, TOKEN);
+    if (status) console.log(`refused ${req.socket.remoteAddress} (${status})`);
+    done(status === null, status ?? undefined);
+  },
+});
 let nextId = 1;
 
 // The chat list with the one fact only this process knows on it: which chats Claude
@@ -262,9 +277,11 @@ wss.on('listening', () => {
   // nobody copies an address out of System Settings or remembers a ts.net name.
   void reach(PORT).then((r) => {
     console.log(`  simulator    ${r.simulator}`);
-    if (r.wifi) console.log(`  same Wi-Fi   ${r.wifi}`);
+    if (r.wifi && !/^(127\.|::1$|localhost$)/.test(HOST)) console.log(`  same Wi-Fi   ${r.wifi}`);
     console.log(`  anywhere     ${r.anywhere}`);
     console.log(`  stt ${STT_MODEL}  ·  voice ${VOICE_MODEL}`);
+    console.log(`  listening    ${HOST}:${PORT}`);
+    console.log(`  token        ${process.env['DUCK_TALK_TOKEN']?.trim() ? 'DUCK_TALK_TOKEN' : '.duck-talk/token'} — enter it in the app under Settings ▸ Server`);
   });
   // Asking the CLI who it is takes a subprocess and about 700ms, so it is printed
   // when it comes back rather than kept in front of the address someone is waiting for.

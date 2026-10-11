@@ -26,6 +26,18 @@ enum Relay {
         return url
     }
 
+    /// The relay's token, from Settings ▸ Server — the relay refuses every socket without
+    /// it (server/auth.ts). Sent as a header so it stays out of the URL and the logs.
+    static let tokenKey = "relayToken"
+
+    /// The handshake for a socket URL: the URL, with the relay's token on it.
+    static func request(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        let token = (UserDefaults.standard.string(forKey: tokenKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !token.isEmpty { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        return request
+    }
+
     /// What to show when it refuses. One sentence in one place, because every screen that
     /// can report it should word it the same way.
     static let badAddress = "Needs a ws:// or wss:// address"
@@ -70,7 +82,7 @@ enum Relay {
     /// because a host that drops packets is never refused, only slow.
     private static func answers(_ address: String) async -> Bool {
         guard let url = url(address, query: "?data=1") else { return false }
-        let task = URLSession.shared.webSocketTask(with: url)
+        let task = URLSession.shared.webSocketTask(with: request(url))
         task.resume()
         return await withTaskGroup(of: Bool.self) { group in
             group.addTask {
@@ -118,7 +130,7 @@ enum Relay {
         guard let url = url(address, query: "?data=1"),
               let json = try? JSONSerialization.data(withJSONObject: question),
               let text = String(data: json, encoding: .utf8) else { return nil }
-        let task = URLSession.shared.webSocketTask(with: url)
+        let task = URLSession.shared.webSocketTask(with: request(url))
         task.resume()
         defer { task.cancel(with: .normalClosure, reason: nil) }
         guard (try? await task.send(.string(text))) != nil else { return nil }

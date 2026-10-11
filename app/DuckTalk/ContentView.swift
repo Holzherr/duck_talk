@@ -1051,6 +1051,7 @@ struct ServerView: View {
     let address: String
     let offline: String?
     let relay: RelayStore
+    @AppStorage(Relay.tokenKey) private var token = ""
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1063,6 +1064,10 @@ struct ServerView: View {
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
                         .accessibilityLabel("Server addresses")
+                    SecureField("Relay token", text: $token)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Relay token")
                     Label(reach.text, systemImage: reach.symbol)
                         .font(.footnote)
                         .foregroundStyle(reach.color)

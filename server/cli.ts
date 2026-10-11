@@ -42,11 +42,14 @@ const { VERSION } = await import('./paths.ts');
 if (argv.includes('--help') || argv.includes('-h')) {
   console.log(`duck-talk ${VERSION} — talk to Claude Code from your phone
 
-  duck-talk [--port <n>] [--cwd <path>] [--awake] [--skill <name>]
+  duck-talk [--port <n>] [--host <addr>] [--cwd <path>] [--awake] [--skill <name>]
 
   --port <n>    which port to listen on (default 8765). Fixed on purpose: a
                 Tailscale front door opens onto one port, and moving would leave
                 the phone talking to whatever is still behind it.
+  --host <addr> which address to listen on (HOST, default 127.0.0.1 — enough for the
+                simulator and Tailscale). 0.0.0.0 also lets a phone on the same Wi-Fi
+                in, over plain ws://.
   --cwd <path>  the project Claude works in (default: this folder)
   --awake       keep this Mac from idle sleep while the relay runs (KEEP_AWAKE=1).
                 Idle sleep only: a closed lid still sleeps the Mac.
@@ -54,6 +57,9 @@ if (argv.includes('--help') || argv.includes('-h')) {
                 default on-the-road), read from .claude/skills/<name>/SKILL.md;
                 none turns it off. A folder without it starts without one.
   --version     print the version and exit
+
+Every socket needs the relay's token: DUCK_TALK_TOKEN, or the one minted into
+.duck-talk/token on first start. Enter it in the app under Settings ▸ Server.
 
 Needs GEMINI_API_KEY in the environment or in a .env file in this folder, and
 Claude Code signed in — or ANTHROPIC_API_KEY, which bills the API instead.
@@ -101,6 +107,8 @@ if (process.env['ANTHROPIC_API_KEY']?.trim()) {
 
 const port = flag('port');
 if (port) process.env['PORT'] = port;
+const host = flag('host');
+if (host) process.env['HOST'] = host;
 const skill = flag('skill');
 if (skill) process.env['CLAUDE_SKILL'] = skill;
 

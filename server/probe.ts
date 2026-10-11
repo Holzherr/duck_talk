@@ -17,6 +17,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { token } from './auth.ts';
 
 const run = promisify(execFile);
 
@@ -70,7 +71,9 @@ interface Turn {
 }
 
 async function turn(pcm: Buffer, timeoutMs = 90_000): Promise<Turn> {
-  const ws = new WebSocket(URL_BASE);
+  const url = new URL(URL_BASE);
+  url.searchParams.set('token', token()); // Node's WebSocket sets no headers — see auth.ts
+  const ws = new WebSocket(url);
   const reply: Buffer[] = [];
   const result: Turn = {
     heard: '',

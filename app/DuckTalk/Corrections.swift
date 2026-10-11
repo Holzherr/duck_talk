@@ -109,7 +109,7 @@ final class RelayStore {
         }
         var backoff: Duration = .milliseconds(250)
         while wanted == serverURL {
-            let task = URLSession.shared.webSocketTask(with: url)
+            let task = URLSession.shared.webSocketTask(with: Relay.request(url))
             self.task = task
             task.resume()
             send(["type": "read"])  // anything is answered with all of it
